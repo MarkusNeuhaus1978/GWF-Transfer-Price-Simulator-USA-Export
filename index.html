@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GWF Transfer Price Simulator</title>
+
+<!-- PWA -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#00457C">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="GWF Simulator">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="description" content="Transfer Price Simulator for GWF AG Water Meter Export USA">
+
+<!-- Fonts -->
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:       #F4F7FA;
+    --surface:  #FFFFFF;
+    --surface2: #EBF0F6;
+    --border:   #D0DAE6;
+    --legacy:   #00457C;
+    --pulse:    #00A3E0;
+    --dark:     #003C67;
+    --muted:    #949CAA;
+    --text:     #003C67;
+    --radius:   8px;
+    --shadow:   0 2px 12px rgba(0,69,124,0.08);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', Arial, sans-serif;
+    min-height: 100vh;
+    padding: 2rem 1rem 3rem;
+  }
+  .container { max-width: 980px; margin: 0 auto; }
+
+  /* Header */
+  header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 2rem;
+    padding-bottom: 1.25rem;
+    border-bottom: 3px solid var(--pulse);
+  }
+  /* Logo */
+  .logo-wrap { display: flex; align-items: center; }
+  .logo-img {
+    height: 40px;
+    width: auto;
+    display: block;
+    margin-left: -8px; /* compensate for protection zone padding in logo file */
+  }
+  .logo-sub {
+    font-size: 0.68rem; color: var(--muted);
+    letter-spacing: 0.1em; text-transform: uppercase; margin-top: 0.1rem;
+    font-weight: 400;
+  }
+  .badge {
+    background: var(--legacy); color: #fff;
+    border-radius: var(--radius); padding: 0.5rem 1rem;
+    font-size: 0.7rem; text-align: right; line-height: 1.7;
+  }
+  .badge strong { display: block; font-size: 0.8rem; }
+
+  /* Layout */
+  .layout { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
+  @media (max-width: 720px) { .layout { grid-template-columns: 1fr; } }
+  .full-width { grid-column: 1 / -1; }
+
+  /* Cards */
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 1.5rem; box-shadow: var(--shadow);
+  }
+  .card-title {
+    font-size: 0.67rem; font-weight: 600; color: var(--legacy);
+    letter-spacing: 0.1em; text-transform: uppercase;
+    margin-bottom: 1.25rem;
+    display: flex; align-items: center; gap: 0.5rem;
+  }
+  .card-title::before {
+    content: ''; display: inline-block;
+    width: 14px; height: 3px;
+    background: var(--pulse); border-radius: 2px; flex-shrink: 0;
+  }
+
+  /* Fields */
+  .field { margin-bottom: 1rem; }
+  .field:last-child { margin-bottom: 0; }
+  label {
+    display: flex; justify-content: space-between; align-items: baseline;
+    font-size: 0.72rem; font-weight: 500; color: var(--dark);
+    margin-bottom: 0.3rem;
+  }
+  label .unit {
+    font-size: 0.62rem; font-weight: 400;
+    background: var(--surface2); border: 1px solid var(--border);
+    color: var(--muted); padding: 1px 6px; border-radius: 4px;
+    font-family: 'DM Mono', monospace;
+  }
+  input[type="number"] {
+    width: 100%; background: var(--surface);
+    border: 1.5px solid var(--border); border-radius: 6px;
+    color: var(--dark); font-family: 'DM Mono', monospace;
+    font-size: 0.9rem; font-weight: 500; padding: 0.5rem 0.75rem;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  input[type="number"]:focus {
+    outline: none; border-color: var(--pulse);
+    box-shadow: 0 0 0 3px rgba(0,163,224,0.15);
+  }
+
+  /* Transport */
+  .transport-toggle { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+  .transport-btn {
+    background: var(--surface2); border: 1.5px solid var(--border);
+    border-radius: 6px; color: var(--muted);
+    font-family: 'DM Sans', Arial, sans-serif;
+    font-size: 0.82rem; font-weight: 500; padding: 0.6rem;
+    cursor: pointer; text-align: center; transition: all 0.15s;
+    display: flex; align-items: center; justify-content: center; gap: 0.4rem;
+  }
+  .transport-btn.active { background: var(--legacy); border-color: var(--legacy); color: #fff; }
+  .transport-btn:hover:not(.active) { border-color: var(--pulse); color: var(--legacy); background: #fff; }
+
+  /* Result Card */
+  .result-card {
+    background: var(--legacy); border-radius: var(--radius);
+    padding: 1.75rem; grid-column: 1 / -1;
+    position: relative; overflow: hidden;
+    box-shadow: 0 4px 24px rgba(0,69,124,0.2);
+  }
+  .result-card::after {
+    content: ''; position: absolute; bottom: -40px; right: -40px;
+    width: 180px; height: 180px; border-radius: 50%;
+    background: rgba(0,163,224,0.1); pointer-events: none;
+  }
+  .result-card .card-title { color: rgba(255,255,255,0.55); margin-bottom: 1.25rem; }
+  .result-card .card-title::before { background: var(--pulse); }
+
+  .result-main {
+    display: grid; grid-template-columns: 1fr auto;
+    gap: 1rem; align-items: start; margin-bottom: 1.5rem;
+  }
+  .transfer-price-display { display: flex; flex-direction: column; }
+  .transfer-price-label {
+    font-size: 0.64rem; color: rgba(255,255,255,0.5);
+    letter-spacing: 0.12em; text-transform: uppercase;
+    margin-bottom: 0.3rem; font-weight: 500;
+  }
+  .transfer-price-value {
+    font-size: 3rem; font-weight: 700; color: #fff;
+    letter-spacing: -0.03em; line-height: 1;
+  }
+  .transfer-price-sub {
+    font-size: 0.78rem; color: rgba(255,255,255,0.5);
+    margin-top: 0.4rem; font-family: 'DM Mono', monospace;
+  }
+  .transfer-price-sub span { color: var(--pulse); }
+
+  .gauges { display: flex; gap: 0.75rem; }
+  .margin-gauge { display: flex; flex-direction: column; align-items: center; gap: 0.35rem; }
+  .margin-label {
+    font-size: 0.57rem; color: rgba(255,255,255,0.45);
+    text-transform: uppercase; letter-spacing: 0.08em;
+    text-align: center; font-weight: 500;
+  }
+  .margin-circle {
+    width: 76px; height: 76px; border-radius: 50%;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    font-size: 1.15rem; font-weight: 700; transition: all 0.3s; border: 2.5px solid;
+  }
+  .margin-circle-sub {
+    font-size: 0.49rem; font-family: 'DM Sans', Arial, sans-serif;
+    font-weight: 500; opacity: 0.75; text-transform: uppercase; letter-spacing: 0.05em;
+  }
+  .margin-ok   { background: rgba(26,138,74,0.2);  border-color: #4ade80; color: #4ade80; }
+  .margin-warn { background: rgba(176,122,0,0.2);  border-color: #fbbf24; color: #fbbf24; }
+  .margin-bad  { background: rgba(192,57,43,0.2);  border-color: #f87171; color: #f87171; }
+
+  /* Breakdown */
+  .breakdown {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 0.6rem; padding-top: 1.25rem;
+    border-top: 1px solid rgba(255,255,255,0.1);
+  }
+  .breakdown-item {
+    background: rgba(255,255,255,0.07);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 6px; padding: 0.7rem 0.85rem;
+  }
+  .bi-label {
+    font-size: 0.59rem; color: rgba(255,255,255,0.42);
+    letter-spacing: 0.06em; text-transform: uppercase;
+    margin-bottom: 0.2rem; font-weight: 500;
+  }
+  .bi-value {
+    font-size: 0.87rem; color: rgba(255,255,255,0.88);
+    font-weight: 600; font-family: 'DM Mono', monospace;
+  }
+  .bi-value.accent  { color: #ffffff; }
+  .bi-value.pulse   { color: #5AC5F1; }
+  .bi-value.success { color: #4ade80; }
+
+  /* Sanity */
+  .sanity-check {
+    margin-top: 1rem; padding: 0.75rem 1rem;
+    border-radius: 6px; font-size: 0.69rem;
+    font-family: 'DM Mono', monospace; line-height: 1.7; border: 1px solid;
+  }
+  .sanity-ok  { background: rgba(26,138,74,0.12);  border-color: #4ade80; color: #86efac; }
+  .sanity-bad { background: rgba(192,57,43,0.12);  border-color: #f87171; color: #fca5a5; }
+
+  /* Footnote */
+  .footnote {
+    font-size: 0.64rem; color: var(--muted);
+    margin-top: 1.5rem; line-height: 1.8;
+    border-top: 1px solid var(--border); padding-top: 1rem;
+  }
+  .footnote strong { color: var(--dark); }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <div>
+      <div class="logo-wrap">
+        <img src="data:image/png;base64,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" alt="GWF Logo" class="logo-img">
+      </div>
+      <div class="logo-sub">Transfer Price Simulator &nbsp;·&nbsp; Export USA &nbsp;·&nbsp; Incoterms FCA Lucerne</div>
+    </div>
+  </header>
+
+  <div class="layout">
+
+    <div class="card">
+      <div class="card-title">Product Costs &amp; Margins</div>
+      <div class="field">
+        <label>Cost of Goods Sold (COGS) <span class="unit">CHF/unit</span></label>
+        <input type="number" id="cogs" value="35.13" step="0.01" min="0">
+      </div>
+      <div class="field">
+        <label>Target Gross Margin GWF (on TP CHF) <span class="unit">%</span></label>
+        <input type="number" id="targetMargin" value="40" step="0.5" min="0" max="99">
+      </div>
+      <div class="field">
+        <label>Packaging Costs <span class="unit">CHF/unit</span></label>
+        <input type="number" id="packaging" value="0.50" step="0.10" min="0">
+      </div>
+      <div class="field">
+        <label>USD/CHF Exchange Rate <span class="unit">CHF per USD</span></label>
+        <input type="number" id="fxRate" value="0.79" step="0.01" min="0.1">
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">US Market &amp; Duties</div>
+      <div class="field">
+        <label>US Import Tariff (HTS Code) <span class="unit">%</span></label>
+        <input type="number" id="tariff" value="11.7" step="0.1" min="0" max="100">
+      </div>
+      <div class="field">
+        <label>Lot Size (Delivery Qty) <span class="unit">units</span></label>
+        <input type="number" id="quantity" value="1000" step="50" min="1">
+      </div>
+      <div class="field">
+        <label>Target Gross Margin Distributor <span class="unit">%</span></label>
+        <input type="number" id="partnerMargin" value="20" step="0.5" min="0" max="99">
+      </div>
+    </div>
+
+    <div class="card full-width">
+      <div class="card-title">Shipping Method</div>
+      <div class="transport-toggle">
+        <button class="transport-btn active" data-mode="sea" onclick="setTransport('sea')">🚢 Sea Freight</button>
+        <button class="transport-btn" data-mode="air" onclick="setTransport('air')">✈️ Air Freight</button>
+      </div>
+      <div style="margin-top:1rem;">
+        <div class="field">
+          <label>Freight Costs <span class="unit">CHF/unit</span></label>
+          <input type="number" id="freight" value="1.20" step="0.10" min="0">
+        </div>
+      </div>
+    </div>
+
+    <div class="result-card">
+      <div class="card-title">Calculated Result</div>
+      <div class="result-main">
+        <div class="transfer-price-display">
+          <div class="transfer-price-label">Calc. Distributor Price → End Customer</div>
+          <div class="transfer-price-value" id="vpPriceMain">—</div>
+          <div class="transfer-price-sub">Transfer Price GWF:&nbsp;<span id="tpUSD">—</span>&nbsp;·&nbsp;<span id="tpCHF">—</span></div>
+        </div>
+        <div class="gauges">
+          <div class="margin-gauge">
+            <div class="margin-label">GWF Margin</div>
+            <div class="margin-circle margin-ok" id="marginCircle">
+              <span id="marginVal">—</span>
+              <span class="margin-circle-sub">Gross</span>
+            </div>
+          </div>
+          <div class="margin-gauge">
+            <div class="margin-label">Distr. Margin</div>
+            <div class="margin-circle margin-ok" id="distMarginCircle">
+              <span id="distMarginVal">—</span>
+              <span class="margin-circle-sub">Gross</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="breakdown">
+        <div class="breakdown-item"><div class="bi-label">COGS</div><div class="bi-value" id="b_cogs">—</div></div>
+        <div class="breakdown-item"><div class="bi-label">Packaging</div><div class="bi-value" id="b_pkg">—</div></div>
+        <div class="breakdown-item"><div class="bi-label">Freight (paid by Distr.)</div><div class="bi-value" id="b_freight">—</div></div>
+        <div class="breakdown-item"><div class="bi-label">Transfer Price CHF/unit</div><div class="bi-value accent" id="b_tp_chf">—</div></div>
+        <div class="breakdown-item"><div class="bi-label">Gross Profit GWF (on COGS+Pkg)</div><div class="bi-value success" id="b_profit">—</div></div>
+        <div class="breakdown-item"><div class="bi-label">US Import Duty</div><div class="bi-value pulse" id="b_duty">—</div></div>
+        <div class="breakdown-item"><div class="bi-label">MPF 0.3464%</div><div class="bi-value pulse" id="b_mpf">—</div></div>
+        <div class="breakdown-item" id="row_hmf"><div class="bi-label">HMF 0.125% (Sea only)</div><div class="bi-value pulse" id="b_hmf">—</div></div>
+        <div class="breakdown-item"><div class="bi-label">Total Duties</div><div class="bi-value pulse" id="b_total_duties">—</div></div>
+        <div class="breakdown-item"><div class="bi-label">Landed Cost Distributor</div><div class="bi-value pulse" id="b_landed">—</div></div>
+        <div class="breakdown-item"><div class="bi-label">Calc. Distributor Price</div><div class="bi-value accent" id="b_vp_price">—</div></div>
+        <div class="breakdown-item"><div class="bi-label">Gross Profit Distributor</div><div class="bi-value success" id="b_vpmargin">—</div></div>
+        <div class="breakdown-item"><div class="bi-label">Lot Total (USD)</div><div class="bi-value accent" id="b_total_lot">—</div></div>
+        <div class="breakdown-item"><div class="bi-label">Lot Total (CHF)</div><div class="bi-value" id="b_total_lot_chf">—</div></div>
+      </div>
+
+      <div id="sanityCheck" class="sanity-check sanity-ok" style="display:none;"></div>
+    </div>
+
+  </div>
+
+  <div class="footnote">
+    <strong>Notes &amp; Assumptions:</strong><br>
+    · Formula: TP_CHF = (COGS + Packaging) / (1 − Gross Margin GWF) &nbsp;|&nbsp; Gross Margin = (TP_CHF − COGS) / TP_CHF<br>
+    · Freight costs are borne by the Distributor (FCA Lucerne) → not included in TP, but added to Distributor Landed Cost.<br>
+    · US Import Tariff: Applied to transaction value (TP_USD). Currently ~11.7% for CH goods (MFN ~1.7% + Section 122 10%, as of April 2026).<br>
+    · MPF (Merchandise Processing Fee): 0.3464% of Customs Value, min. USD 31.67 / max. USD 614.35 per shipment — allocated per unit.<br>
+    · HMF (Harbor Maintenance Fee): 0.125% of Customs Value, sea freight via US ports only.<br>
+    · This simulation does not replace formal transfer pricing documentation (OECD Guidelines, IRS §482). &nbsp;|&nbsp; gwf-group.com
+  </div>
+
+</div>
+<script>
+  const freightDefaults = { air: 3.50, sea: 1.20 };
+  let transportMode = 'sea';
+
+  function setTransport(mode) {
+    transportMode = mode;
+    document.querySelectorAll('.transport-btn').forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
+    document.getElementById('freight').value = freightDefaults[mode].toFixed(2);
+    calculate();
+  }
+
+  function fmtCHF(v, d=2) { return 'CHF ' + v.toFixed(d); }
+  function fmtUSD(v, d=2) { return 'USD ' + v.toFixed(d); }
+
+  function calculate() {
+    const cogs      = +document.getElementById('cogs').value || 0;
+    const packaging = +document.getElementById('packaging').value || 0;
+    const freight   = +document.getElementById('freight').value || 0;
+    const targetMg  = +document.getElementById('targetMargin').value / 100 || 0;
+    const fxRate    = +document.getElementById('fxRate').value || 0.79;
+    const tariff    = +document.getElementById('tariff').value / 100 || 0;
+    const qty       = +document.getElementById('quantity').value || 1;
+    const partnerMg = +document.getElementById('partnerMargin').value / 100 || 0;
+
+    const costBase = cogs + packaging;
+    let tp_chf = 0;
+    if (targetMg < 1) tp_chf = costBase / (1 - targetMg);
+
+    const actualMargin = tp_chf > 0 ? (tp_chf - costBase) / tp_chf : 0;
+    const profit_chf   = tp_chf - costBase;
+    const tp_usd       = tp_chf / fxRate;
+    const freight_usd  = freight / fxRate;
+    const duty_usd     = tp_usd * tariff;
+    const mpf_total    = Math.min(Math.max(tp_usd * qty * 0.003464, 31.67), 614.35);
+    const mpf_usd      = mpf_total / qty;
+    const hmf_usd      = transportMode === 'sea' ? tp_usd * 0.00125 : 0;
+    const total_duties = duty_usd + mpf_usd + hmf_usd;
+    const landed_usd   = tp_usd + freight_usd + total_duties;
+    let vp_price = 0;
+    if (partnerMg < 1) vp_price = landed_usd / (1 - partnerMg);
+    const vp_profit = vp_price - landed_usd;
+    const lot_usd = tp_usd * qty;
+    const lot_chf = tp_chf * qty;
+
+    document.getElementById('vpPriceMain').textContent = fmtUSD(vp_price);
+    document.getElementById('tpUSD').textContent = fmtUSD(tp_usd);
+    document.getElementById('tpCHF').textContent = fmtCHF(tp_chf);
+
+    document.getElementById('b_cogs').textContent         = fmtCHF(cogs);
+    document.getElementById('b_pkg').textContent          = fmtCHF(packaging);
+    document.getElementById('b_freight').textContent      = fmtCHF(freight) + ' → ' + fmtUSD(freight_usd);
+    document.getElementById('b_tp_chf').textContent       = fmtCHF(tp_chf);
+    document.getElementById('b_profit').textContent       = '+' + fmtCHF(profit_chf);
+    document.getElementById('b_duty').textContent         = fmtUSD(duty_usd);
+    document.getElementById('b_mpf').textContent          = fmtUSD(mpf_usd,3) + ' (ship: ' + fmtUSD(mpf_total,2) + ')';
+    document.getElementById('b_hmf').textContent          = transportMode === 'sea' ? fmtUSD(hmf_usd,3) : '— sea only';
+    document.getElementById('row_hmf').style.opacity      = transportMode === 'sea' ? '1' : '0.4';
+    document.getElementById('b_total_duties').textContent = fmtUSD(total_duties);
+    document.getElementById('b_landed').textContent       = fmtUSD(landed_usd);
+    document.getElementById('b_vp_price').textContent     = fmtUSD(vp_price);
+    document.getElementById('b_vpmargin').textContent     = '+' + fmtUSD(vp_profit) + ' (' + (partnerMg*100).toFixed(1) + '%)';
+    document.getElementById('b_vpmargin').className       = 'bi-value success';
+    document.getElementById('b_total_lot').textContent    = fmtUSD(lot_usd,0) + ' (' + qty + ' units)';
+    document.getElementById('b_total_lot_chf').textContent = fmtCHF(lot_chf,0) + ' (' + qty + ' units)';
+
+    document.getElementById('marginVal').textContent = (actualMargin*100).toFixed(1) + '%';
+    document.getElementById('marginCircle').className = 'margin-circle ' +
+      (actualMargin >= targetMg-0.001 ? 'margin-ok' : actualMargin > targetMg-0.05 ? 'margin-warn' : 'margin-bad');
+    document.getElementById('distMarginVal').textContent = (partnerMg*100).toFixed(1) + '%';
+    document.getElementById('distMarginCircle').className = 'margin-circle margin-ok';
+
+    const sc = document.getElementById('sanityCheck');
+    sc.style.display = 'block';
+    const checks = []; let level = 'ok';
+    if (tp_usd <= 0 || vp_price <= 0) {
+      checks.push('⚠ Calculation failed (Margin ≥ 100%?)'); level = 'bad';
+    } else {
+      checks.push(`✓ TP_CHF = (${fmtCHF(cogs)} + ${fmtCHF(packaging)}) / (1 − ${(targetMg*100).toFixed(0)}%) = ${fmtCHF(tp_chf)} → Margin = (${fmtCHF(tp_chf)} − ${fmtCHF(costBase)}) / ${fmtCHF(tp_chf)} = ${(actualMargin*100).toFixed(1)}%`);
+      checks.push(`  Duties: Import Duty ${fmtUSD(duty_usd)} + MPF ${fmtUSD(mpf_usd,3)}${transportMode==='sea'?' + HMF '+fmtUSD(hmf_usd,3):''} = ${fmtUSD(total_duties)}`);
+      checks.push(`  Landed Cost = ${fmtUSD(tp_usd)} + Freight ${fmtUSD(freight_usd)} + Duties ${fmtUSD(total_duties)} = ${fmtUSD(landed_usd)}`);
+      checks.push(`  Distributor Price = ${fmtUSD(landed_usd)} / (1 − ${(partnerMg*100).toFixed(0)}%) = ${fmtUSD(vp_price)}`);
+    }
+    sc.innerHTML = checks.join('<br>');
+    sc.className = 'sanity-check ' + (level === 'bad' ? 'sanity-bad' : 'sanity-ok');
+  }
+
+  document.querySelectorAll('input').forEach(el => el.addEventListener('input', calculate));
+  calculate();
+</script>
+
+<script>
+  // Register Service Worker for PWA offline support
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('service-worker.js')
+        .then(reg => console.log('GWF SW registered:', reg.scope))
+        .catch(err => console.warn('GWF SW registration failed:', err));
+    });
+  }
+</script>
+</body>
+</html>
